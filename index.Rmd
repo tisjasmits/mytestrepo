@@ -242,6 +242,7 @@ digster %>%                    # Start with awards.
 
 
 
+
 ## Week 7
 
 Use a storyboard layout for the portfolio. Pretend it is meant to show your parents what you're doing in this course. Don't show any code and too much text. Instead, use visualizations!
@@ -288,8 +289,6 @@ wood %>%
   theme_minimal() +
   scale_fill_viridis_c()
 ```
-
-Let's look at seven recordings of Josquin des Prez's 'Ave Maria'. The blank lines separate performances at three different pitch levels (transpositions).
 
 ```{r}
 ## The Tallis Scholars
@@ -340,8 +339,6 @@ gabrieli <-
   select(start, duration, pitches)
 ```
 
-The `compmus_long_distance()` helper function gets everything ready to plot the distances between the chroma vectors in two different pieces. It takes two data frames (don't forget to normalise the chroma vectors), the feature we want to compute distance over (`pitches` in our case), and any of the distance measures in the table above. It returns a long table ready for plotting, with `xstart`, `xduration`, `ystart`, and `yduration`.
-
 ```{r}
 compmus_long_distance(
   tallis %>% mutate(pitches = map(pitches, compmus_normalise, "manhattan")),
@@ -373,6 +370,7 @@ The output of `geom_tile()` can be very large if sent through `ggplotly()` and w
 ### Week 8
 
 #### Breakout 2: Cepstograms
+
 ```{r cepstogram}
 bzt <-
   get_tidy_audio_analysis("0fDkIMgHo6olNd3QBRko7v") %>% # Change URI.
@@ -409,7 +407,8 @@ bzt %>%
   scale_fill_viridis_c() +                              
   theme_classic()
 ```
-  
+
+
 #### Breakout 3: Self-Similarity Matrices
 
 ```{r self-similarity matrices}
@@ -477,12 +476,11 @@ bzt %>%
 
 
 
-
 ### Week 9
 
-#### Breakout 2: Chrodograms
+#### Breakout 2: Chordograms
 
-```{r}
+```{r chordogram setup}
 circshift <- function(v, n) {
   if (n == 0) v else c(tail(v, n), head(v, -n))
 }
@@ -570,7 +568,7 @@ key_templates <-
   )
 ```
 
-```{r}
+```{r twenty five chordogram}
 twenty_five <-
   get_tidy_audio_analysis("5UVsbUV0Kh033cqsZ5sLQi") %>%
   compmus_align(bars, segments) %>%
@@ -583,9 +581,7 @@ twenty_five <-
         method = "mean", norm = "manhattan"
       )
   )
-```
 
-```{r}
 twenty_five %>% 
   compmus_match_pitch_template(
     chord_templates,         # Change to chord_templates if descired
@@ -604,7 +600,7 @@ twenty_five %>%
 
 #### Breakout 3: Track-Level Summaries
 
-```{r}
+```{r jazz analysis}
 bebop <-
   get_playlist_audio_features(
     "thesoundsofspotify",
@@ -623,9 +619,7 @@ jazz <-
   bebop %>%
   mutate(genre = "Bebop") %>%
   bind_rows(bigband %>% mutate(genre = "Big Band"))
-```
 
-```{r}
 jazz %>%
   mutate(
     sections =
@@ -656,9 +650,7 @@ jazz %>%
     size = "Duration (min)",
     alpha = "Volume (dBFS)"
   )
-```
 
-```{r}
 jazz %>%
   mutate(
     timbre =
@@ -676,6 +668,114 @@ jazz %>%
   scale_fill_viridis_d() +
   labs(x = "Spotify Timbre Coefficients", y = "", fill = "Genre")
 ```
+
+
+
+
+### Week 10
+
+#### Breakout 2: Novelty Functions
+
+``` {r pata pata novelty}
+# Kanye West: 4D6TpthzUVNTjWQqfBW5Kb
+# pata pata: 3uy90vHHATPjtdilshDQDt
+pata_pata <-
+  get_tidy_audio_analysis("3uy90vHHATPjtdilshDQDt") %>%
+  select(segments) %>%
+  unnest(segments)
+
+pata_pata %>%
+  mutate(loudness_max_time = start + loudness_max_time) %>%
+  arrange(loudness_max_time) %>%
+  mutate(delta_loudness = loudness_max - lag(loudness_max)) %>%
+  ggplot(aes(x = loudness_max_time, y = pmax(0, delta_loudness))) +
+  geom_line() +
+  xlim(0, 30) +
+  theme_minimal() +
+  labs(x = "Time (s)", y = "Novelty")
+
+pata_pata %>%
+  mutate(pitches = map(pitches, compmus_normalise, "clr")) %>%
+  arrange(start) %>%
+  mutate(pitches = map2(pitches, lag(pitches), `-`)) %>%
+  slice(-1) %>%
+  compmus_gather_chroma() %>%
+  ggplot(
+    aes(
+      x = start + duration / 2,
+      width = duration,
+      y = pitch_class,
+      fill = pmax(0, value)
+    )
+  ) +
+  geom_tile() +
+  scale_fill_viridis_c(guide = "none") +
+  xlim(0, 30) +
+  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+  theme_classic()
+
+pata_pata %>%
+  arrange(start) %>%
+  mutate(timbre = map2(timbre, lag(timbre), `-`)) %>%
+  slice(-1) %>%
+  compmus_gather_timbre() %>%
+  ggplot(
+    aes(
+      x = start + duration / 2,
+      width = duration,
+      y = basis,
+      fill = pmax(0, value)
+    )
+  ) +
+  geom_tile() +
+  scale_fill_viridis_c(guide = "none") +
+  xlim(0, 30) +
+  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+  theme_classic()
+```
+
+
+#### Breakout 3: Tempograms
+
+```{r graveola setup}
+
+# DON'T DO TEMPOGRAMS, MY LAPTOP CAN'T HANDLE
+
+# graveola <- get_tidy_audio_analysis("6PJasPKAzNLSOzxeAH33j2")
+# 
+# graveola %>%
+#   tempogram(window_size = 8, hop_size = 1, cyclic = FALSE) %>%
+#   ggplot(aes(x = time, y = bpm, fill = power)) +
+#   geom_raster() +
+#   scale_fill_viridis_c(guide = "none") +
+#   labs(x = "Time (s)", y = "Tempo (BPM)") +
+#   theme_classic()
+# 
+# graveola %>%
+#   tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) %>%
+#   ggplot(aes(x = time, y = bpm, fill = power)) +
+#   geom_raster() +
+#   scale_fill_viridis_c(guide = "none") +
+#   labs(x = "Time (s)", y = "Tempo (BPM)") +
+#   theme_classic()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
